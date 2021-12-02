@@ -1,33 +1,26 @@
-# /*----------------------------------------------------------------------------8
+---
+
+# /*---------------------------------------------------------------------------8
 # |                                                                            |
 # |                         PLAYBOOK FOR BOM DOWNLOADER                        |
 # |                                                                            |
 # +------------------------------------4--------------------------------------*/
----
 
 # Steps:
 #   01) Process BOM (Validate and Extract)
 #
 
+- name:                                BOM Downloader
+  hosts:                               localhost
 
-- hosts:                               localhost
-
-  name:                                BOM Downloader
   gather_facts:                        false
   connection:                          local
   become:                              false
   become_user:                         root
-
   vars_files:
     - vars/ansible-input-api.yaml                               # API Input template with defaults
 
-
   tasks:
-# -------------------------------------+---------------------------------------8
-#
-# Build the list of tasks to be executed in order here.
-#
-# -------------------------------------+---------------------------------------8
 
     - block:
         - name:                        Set the bom tier
@@ -63,6 +56,8 @@
         sapbits_sas_token:             "{{ hostvars.localhost.sapbits_sas_token }}"
       tags:
         - 0.1-bom-validator
+
+
 ...
 # /*---------------------------------------------------------------------------8
 # |                                   END                                      |

@@ -1,9 +1,10 @@
-# /*---------------------------------------------------------------------------------------------------8
-# |                                                                                                    |
-# |                      Playbook for SAP SCS HA Install and Pacemaker configuration                   |
-# |                                                                                                    |
-# +------------------------------------4--------------------------------------------------------------*/
 ---
+
+# /*===================================================================================================8
+# ||                                                                                                  ||
+# ||                      Playbook for SAP SCS HA Install and Pacemaker configuration                 ||
+# ||                                                                                                  ||
+# +============================================4======================================================*/
 
 # /*---------------------------------------------------------------------------8
 # |                                                                            |
@@ -11,18 +12,11 @@
 # |                                                                            |
 # +------------------------------------4--------------------------------------*/
 
-- hosts:                               localhost
-  name:                                Get SPN from KeyVault
+- name:                                Get SPN from KeyVault
+  hosts:                               localhost
   gather_facts:                        true
   vars_files:
     - vars/ansible-input-api.yaml      # API Input template with defaults
-
-# -------------------------------------+---------------------------------------8
-#
-# Build the list of tasks to be executed in order here.
-#
-# -------------------------------------+---------------------------------------8
-
 
   tasks:
     - name:                            Remove .step602 flag
@@ -49,27 +43,22 @@
 
 # /*---------------------------------------------------------------------------8
 # |                                                                            |
-# |                       Playbook for SAP SCS Install                         |
+# |                             SAP SCS Install                                |
 # |                                                                            |
 # +------------------------------------4--------------------------------------*/
 
 
-- hosts:                               "{{ sap_sid|upper }}_SCS"
+- name:                                SAP Installation - SCS
+  hosts:                               "{{ sap_sid|upper }}_SCS"
 
-  name:                                SAP Installation - SCS
   remote_user:                         "{{ orchestration_ansible_user }}"
   become:                              true
   become_user:                         root
   gather_facts:                        true
   vars_files:
-    - vars/ansible-input-api.yaml                                               # API Input template with defaults
+    - vars/ansible-input-api.yaml      # API Input template with defaults
 
   tasks:
-# -------------------------------------+---------------------------------------8
-#
-# Build the list of tasks to be executed in order here.
-#
-# -------------------------------------+---------------------------------------8
     - name:                            Standalone SCS Setup
       block:
 
@@ -94,15 +83,17 @@
             - 5.0.0-scs-install
       when:                            not scs_high_availability
 
+
 # /*---------------------------------------------------------------------------8
 # |                                                                            |
-# |              Playbook for SAP SCS HA and Pacemaker Resources               |
+# |                     SAP SCS HA and Pacemaker Resources                     |
 # |                                                                            |
 # +------------------------------------4--------------------------------------*/
 
-- hosts:                               "{{ sap_sid|upper }}_SCS :
+- name:                                "SCS HA Install and Pacemaker Resources"
+  hosts:                               "{{ sap_sid|upper }}_SCS :
                                         {{ sap_sid|upper }}_ERS"
-  name:                                "SCS HA Install and Pacemaker Resources"
+
   remote_user:                         "{{ orchestration_ansible_user }}"
   become:                              true
   become_user:                         root
@@ -111,37 +102,32 @@
     - vars/ansible-input-api.yaml      # API Input template with defaults
 
   tasks:
-# -------------------------------------+---------------------------------------8
-#
-# Build the list of tasks to be executed in order here.
-#
-# -------------------------------------+---------------------------------------8
     - name:                            HA SCS Setup
       block:
-        - name:                        Assertions
+        - name:                             Assertions
           ansible.builtin.assert:
             that:
               - sap_mnt is defined
-            fail_msg:                  A highly available SCS deployment requires a shared sap_mnt
+            fail_msg:                        A highly available SCS deployment requires a shared sap_mnt
 
-
-        - name:                        Print the fencing tenant id
+        - name:                              Print the fencing tenant id
           ansible.builtin.debug:
-            msg:                       "{{ hostvars.localhost.sap_fencing_spn_tenant_id }}"
-            verbosity:                 2
+            msg:                             "{{ hostvars.localhost.sap_fencing_spn_tenant_id }}"
+            verbosity:                       2
 
-        - name:                        Initialize facts
+        - name:                              Initialize facts
           set_fact:
-            tier:                      ha
-            password_ha_db_cluster:        "{{ hostvars.localhost.db_cluster_password }}"
-            main_password:                 "{{ hostvars.localhost.sap_password }}"
-            primary_instance_name:         "{{ ansible_play_hosts_all[0] }}"         # Setting up Primary Instance Name
-            secondary_instance_name:       "{{ ansible_play_hosts_all[1] }}"         # Setting up Secondary Instance Name
+            tier:                            ha
+            password_ha_db_cluster:          "{{ hostvars.localhost.db_cluster_password }}"
+            main_password:                   "{{ hostvars.localhost.sap_password }}"
+            primary_instance_name:           "{{ ansible_play_hosts_all[0] }}"         # Setting up Primary Instance Name
+            secondary_instance_name:         "{{ ansible_play_hosts_all[1] }}"         # Setting up Secondary Instance Name
             sap_hana_fencing_spn_client_id:  "{{ hostvars.localhost.sap_fencing_spn_client_id }}"
             sap_hana_fencing_spn_client_pwd: "{{ hostvars.localhost.sap_fencing_spn_pwd }}"
             sap_hana_fencing_spn_tenant_id:  "{{ hostvars.localhost.sap_fencing_spn_tenant_id }}"
           tags:
             - always
+
         - block:
             - name:                    Include 1.3-repository role
               ansible.builtin.include_role:
@@ -201,19 +187,24 @@
       when:                                scs_high_availability
 
 
-- hosts:                               localhost
-  name:                                Log results
+# /*---------------------------------------------------------------------------8
+# |                                                                            |
+# |                                 Logging                                    |
+# |                                                                            |
+# +------------------------------------4--------------------------------------*/
+
+- name:                                Log results
+  hosts:                               localhost
   gather_facts:                        false
 
   tasks:
-
     - name:                            Ensure the step file exists
       ansible.builtin.file:
         path:                          "{{ _workspace_directory }}/.step602"
         state:                         touch
         mode:                          0755
-...
 
+...
 # /*----------------------------------------------------------------------------8
-# |                                    END                                      |
-# +------------------------------------4--------------------------------------*/
+# |                                   END                                       |
+# +------------------------------------4---------------------------------------*/

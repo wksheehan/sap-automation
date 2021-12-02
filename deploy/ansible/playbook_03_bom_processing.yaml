@@ -1,19 +1,20 @@
-# /*----------------------------------------------------------------------------8
-# |                                                                            |
-# |                         PREPARATION FOR BOM PROCESSING                         |
-# |                                                                            |
-# |                         RESET LOGGING                                      |
-# |                                                                            |
-# +------------------------------------4--------------------------------------*/
 ---
 
-- hosts:                               localhost
-  name:                                Get Storage account details from KeyVault
+# /*---------------------------------------------------------------------------8
+# |                                                                            |
+# |                        PREPARATION FOR BOM PROCESSING                      |
+# |                                                                            |
+# |                              RESET LOGGING                                 |
+# |                                                                            |
+# +------------------------------------4--------------------------------------*/
+
+- name:                                Get Storage account details from KeyVault
+  hosts:                               localhost
   gather_facts:                        false
   vars_files:
-    - vars/ansible-input-api.yaml                               # API Input template with defaults
+    - vars/ansible-input-api.yaml      # API Input template with defaults
+  
   tasks:
-
     - name:                            Set 'sa' tier
       ansible.builtin.set_fact:
         tier:                          sa
@@ -31,30 +32,26 @@
           tags:
             - 0.3.sap-installation-media-storage-details
 
-# /*----------------------------------------------------------------------------8
+
+# /*---------------------------------------------------------------------------8
 # |                                                                            |
-# |                         PLAYBOOK FOR BOM PROCESSING                         |
+# |                              BOM PROCESSING                                |
 # |                                                                            |
 # +------------------------------------4--------------------------------------*/
 
-- hosts:                               "{{ sap_sid|upper }}_SCS"
+- name:                                BOM Processing
+  hosts:                               "{{ sap_sid|upper }}_SCS"
 
-  name:                                BOM Processing
   remote_user:                         "{{ orchestration_ansible_user }}"
   become:                              true
   become_user:                         root
   gather_facts:                        true
   vars_files:
-    - vars/ansible-input-api.yaml                               # API Input template with defaults
+    - vars/ansible-input-api.yaml      # API Input template with defaults
 
   tasks:
-# -------------------------------------+---------------------------------------8
-#
-# Build the list of tasks to be executed in order here.
-#
-# -------------------------------------+---------------------------------------8
 
-    - name: Set facts
+    - name:                            Set facts
       ansible.builtin.set_fact:
         tier:                          preparation
         sapbits_location_base_path:    "{{ hostvars.localhost.sapbits_location_base_path }}"
@@ -68,18 +65,18 @@
           tags:
             - 3.3-bom-processing
 
-# /*----------------------------------------------------------------------------8
+
+# /*---------------------------------------------------------------------------8
 # |                                                                            |
-# |                         PLAYBOOK FOR BOM PROCESSING LOGGING                         |
+# |                          BOM PROCESSING LOGGING                            |
 # |                                                                            |
 # +------------------------------------4--------------------------------------*/
 
-
-- hosts:                               localhost
-  name:                                Log results
+- name:                                Log results
+  hosts:                               localhost
   gather_facts:                        false
   vars_files:
-    - vars/ansible-input-api.yaml                               # API Input template with defaults
+    - vars/ansible-input-api.yaml      # API Input template with defaults
 
   tasks:
     - name:                            Create .step3 flag

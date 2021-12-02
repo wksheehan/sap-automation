@@ -1,17 +1,18 @@
+---
+
 # /*---------------------------------------------------------------------------8
 # |                                                                            |
 # |                       Prepare for SAP PAS Install                          |
 # |                                                                            |
 # +------------------------------------4--------------------------------------*/
----
 
-- hosts:                               localhost
-  name:                                Get SAP Password from KeyVault
+- name:                                Get SAP Password from KeyVault
+  hosts:                               localhost
   gather_facts:                        true
   vars_files:
     - vars/ansible-input-api.yaml                               # API Input template with defaults
-  tasks:
 
+  tasks:
     - name:                            Remove .step502 flag
       ansible.builtin.file:
         path:                          "{{ _workspace_directory }}/.step502"
@@ -27,14 +28,13 @@
 
 # /*---------------------------------------------------------------------------8
 # |                                                                            |
-# |                       Playbook for SAP PAS Install                         |
+# |                              SAP PAS Install                               |
 # |                                                                            |
 # +------------------------------------4--------------------------------------*/
 
+- name:                                SAP Installation - PAS
+  hosts:                               "{{ sap_sid|upper }}_PAS"
 
-- hosts:                               "{{ sap_sid|upper }}_PAS"
-
-  name:                                SAP Installation - PAS
   remote_user:                         "{{ orchestration_ansible_user }}"
   become:                              true
   become_user:                         root
@@ -42,13 +42,7 @@
   vars_files:
     - vars/ansible-input-api.yaml                                               # API Input template with defaults
 
-
   tasks:
-# -------------------------------------+---------------------------------------8
-#
-# Build the list of tasks to be executed in order here.
-#
-# -------------------------------------+---------------------------------------8
 
     - name:                            Set 'pas' tier facts
       ansible.builtin.set_fact:
@@ -63,7 +57,6 @@
 # Description:
 #
 # -------------------------------------+---------------------------------------8
-
     - block:
         - name:                        Include 2.6-sap-mounts role
           ansible.builtin.include_role:
@@ -78,15 +71,15 @@
       tags:
         - 5.2-pas-install
 
+
 # /*---------------------------------------------------------------------------8
 # |                                                                            |
-# |                       Playbook for SAP SCS Logging                         |
+# |                             SAP SCS Logging                                |
 # |                                                                            |
 # +------------------------------------4--------------------------------------*/
 
-
-- hosts:                               localhost
-  name:                                Log results
+- name:                                Log results
+  hosts:                               localhost
   gather_facts:                        true
   vars_files:
     - vars/ansible-input-api.yaml                               # API Input template with defaults
@@ -101,5 +94,5 @@
 
 ...
 # /*---------------------------------------------------------------------------8
-# |                                    END                                     |
+# |                                   END                                      |
 # +------------------------------------4--------------------------------------*/

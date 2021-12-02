@@ -1,15 +1,16 @@
-# /*----------------------------------------------------------------------------8
-# |                                                                            |
-# |                      Prepare for HANA DB Install                           |
-# |                                                                            |
-# +------------------------------------4--------------------------------------*/
 ---
 
-- hosts:                               localhost
-  name:                                Get SAP Password from KeyVault
+# /*---------------------------------------------------------------------------8
+# |                                                                            |
+# |                       Prepare for HANA DB Install                          |
+# |                                                                            |
+# +------------------------------------4--------------------------------------*/
+
+- name:                                Get SAP Password from KeyVault
+  hosts:                               localhost
   gather_facts:                        true
   vars_files:
-    - vars/ansible-input-api.yaml                               # API Input template with defaults
+    - vars/ansible-input-api.yaml      # API Input template with defaults
 
   tasks:
     - name:                            Set hdb fact
@@ -37,23 +38,22 @@
         path:                          "{{ _workspace_directory }}/.step4"
         state:                          absent
 
-# /*----------------------------------------------------------------------------8
+
+# /*---------------------------------------------------------------------------8
 # |                                                                            |
-# |                      Playbook for HANA DB Install                           |
+# |                              HANA DB Install                               |
 # |                                                                            |
 # +------------------------------------4--------------------------------------*/
 
+- name:                                DB Installation - HANA
+  hosts:                               "{{ sap_sid|upper }}_DB"
 
-- hosts:                               "{{ sap_sid|upper }}_DB"
-
-  name:                                DB Installation - HANA
   remote_user:                         "{{ orchestration_ansible_user }}"
   become:                              true
   become_user:                         root
   gather_facts:                        true
   vars_files:
-    - vars/ansible-input-api.yaml                               # API Input template with defaults
-
+    - vars/ansible-input-api.yaml      # API Input template with defaults
 
   tasks:
 # -------------------------------------+---------------------------------------8
@@ -61,7 +61,6 @@
 # Build the list of tasks to be executed in order here.
 #
 # -------------------------------------+---------------------------------------8
-
     - name:                            "Install HANA"
       block:
         - name:                        Setting the DB facts
@@ -151,26 +150,26 @@
       when:                            db_high_availability
 
 
-# /*----------------------------------------------------------------------------8
+# /*---------------------------------------------------------------------------8
 # |                                                                            |
-# |                         PLAYBOOK FOR HANA DB LOGGING                       |
+# |                              HANA DB LOGGING                               |
 # |                                                                            |
 # +------------------------------------4--------------------------------------*/
 
-- hosts:                               localhost
-  name:                                Log results
+- name:                                Log results
+  hosts:                               localhost
   gather_facts:                        true
   vars_files:
     - vars/ansible-input-api.yaml                               # API Input template with defaults
 
   tasks:
-    - name:                           Create .step4 flag
+    - name:                            Create .step4 flag
       ansible.builtin.file:
-        path:                         "{{ _workspace_directory }}/.step4"
-        state:                        touch
-        mode:                         0755
+        path:                          "{{ _workspace_directory }}/.step4"
+        state:                         touch
+        mode:                          0755
 
 ...
 # /*----------------------------------------------------------------------------8
-# |                                    END                                      |
-# +------------------------------------4--------------------------------------*/
+# |                                   END                                       |
+# +------------------------------------4---------------------------------------*/

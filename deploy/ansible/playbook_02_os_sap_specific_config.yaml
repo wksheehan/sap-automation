@@ -1,15 +1,16 @@
-# /*----------------------------------------------------------------------------8
-# |                                                                            |
-# |         Playbook for preparing for SAP specific OS configuration tasks     |
-# |                                                                            |
-# +------------------------------------4--------------------------------------*/
 ---
 
-- hosts:                               localhost
-  name:                                Preparation activities
+# /*---------------------------------------------------------------------------8
+# |                                                                            |
+# |            Preparing for SAP specific OS configuration tasks               |
+# |                                                                            |
+# +------------------------------------4--------------------------------------*/
+
+- name:                                Preparation activities
+  hosts:                               localhost
   gather_facts:                        true
   vars_files:
-    - vars/ansible-input-api.yaml                               # API Input template with defaults
+    - vars/ansible-input-api.yaml      # API Input template with defaults
 
   tasks:
     - name:                            Set 'hdb' tier fact
@@ -26,36 +27,31 @@
     - name:                            Remove .step2 flag
       ansible.builtin.file:
         path:                          "{{ _workspace_directory }}/.step2"
-        state:                          absent
+        state:                         absent
 
-# /*----------------------------------------------------------------------------8
+# /*---------------------------------------------------------------------------8
 # |                                                                            |
-# |         Playbook for performing SAP specific OS configuration tasks        |
+# |             Performing SAP specific OS configuration tasks                 |
 # |                                                                            |
 # +------------------------------------4--------------------------------------*/
 
-- hosts:                               "{{ sap_sid|upper }}_DB  :
+- name:                                OS - SAP specific configuration
+  hosts:                               "{{ sap_sid|upper }}_DB  :
                                         {{ sap_sid|upper }}_SCS :
                                         {{ sap_sid|upper }}_ERS :
                                         {{ sap_sid|upper }}_PAS :
                                         {{ sap_sid|upper }}_APP :
                                         {{ sap_sid|upper }}_WEB"
 
-  name:                                 OS - SAP specific configuration
-  remote_user:                          "{{ orchestration_ansible_user }}"
-  become:                               true
-  become_user:                          root
-  gather_facts:                         true
+  remote_user:                         "{{ orchestration_ansible_user }}"
+  become:                              true
+  become_user:                         root
+  gather_facts:                        true
   vars_files:
-    - vars/ansible-input-api.yaml                               # API Input template with defaults
-
+    - vars/ansible-input-api.yaml      # API Input template with defaults
 
   tasks:
-# -------------------------------------+---------------------------------------8
-#
-# Build the list of tasks to be executed in order here.
-#
-# -------------------------------------+---------------------------------------8
+
     - name:                            Setting the sapos tier facts
       ansible.builtin.set_fact:
         tier:                          sapos                                     # Actions for HANA DB Serve
@@ -140,27 +136,27 @@
       tags:
         - 2.10-sap-notes
 
-# /*----------------------------------------------------------------------------8
+
+# /*---------------------------------------------------------------------------8
 # |                                                                            |
-# |     Logging for performing SAP specific OS configuration tasks             |
+# |         Logging for performing SAP specific OS configuration tasks         |
 # |                                                                            |
 # +------------------------------------4--------------------------------------*/
 
-- hosts:                               localhost
-  name:                                Log results
+- name:                                Log results
+  hosts:                               localhost
   gather_facts:                        true
   vars_files:
-    - vars/ansible-input-api.yaml                               # API Input template with defaults
+    - vars/ansible-input-api.yaml      # API Input template with defaults
 
   tasks:
-    - name:                           Create .step2 flag
+    - name:                            Create .step2 flag
       ansible.builtin.file:
-        path:                         "{{ _workspace_directory }}/.step2"
-        state:                        touch
-        mode:                         0755
-
+        path:                          "{{ _workspace_directory }}/.step2"
+        state:                         touch
+        mode:                          0755
 
 ...
 # /*----------------------------------------------------------------------------8
-# |                                    END                                      |
-# +------------------------------------4--------------------------------------*/
+# |                                   END                                       |
+# +------------------------------------4---------------------------------------*/

@@ -1,17 +1,18 @@
+---
+
 # /*---------------------------------------------------------------------------8
 # |                                                                            |
 # |                       Prepare for SAP ERS Install                          |
 # |                                                                            |
 # +------------------------------------4--------------------------------------*/
----
 
-- hosts:                               localhost
-  name:                                Get SAP Password from KeyVault
+- name:                                Get SAP Password from KeyVault
+  hosts:                               localhost
   gather_facts:                        true
   vars_files:
     - vars/ansible-input-api.yaml                               # API Input template with defaults
+  
   tasks:
-
     - name:                            Remove .step51 flag
       ansible.builtin.file:
         path:                          "{{ _workspace_directory }}/.step51"
@@ -27,14 +28,13 @@
 
 # /*---------------------------------------------------------------------------8
 # |                                                                            |
-# |                       Playbook for SAP ERS Install                         |
+# |                              SAP ERS Install                               |
 # |                                                                            |
 # +------------------------------------4--------------------------------------*/
 
+- name:                                SAP Installation - ERS
+  hosts:                               "{{ sap_sid|upper }}_ERS"
 
-- hosts:                               "{{ sap_sid|upper }}_ERS"
-
-  name:                                SAP Installation - ERS
   remote_user:                         "{{ orchestration_ansible_user }}"
   become:                              true
   become_user:                         root
@@ -42,13 +42,7 @@
   vars_files:
     - vars/ansible-input-api.yaml                                               # API Input template with defaults
 
-
   tasks:
-# -------------------------------------+---------------------------------------8
-#
-# Build the list of tasks to be executed in order here.
-#
-# -------------------------------------+---------------------------------------8
 
     - name:                            Set 'ers' tier facts
       ansible.builtin.set_fact:
@@ -62,7 +56,6 @@
         msg:                           "{{ hostvars.localhost.sap_password }}"
         verbosity:                       2
 
-
     - block:
         - name:                        Include 5.0.0-scs-install role
           ansible.builtin.include_role:
@@ -70,15 +63,15 @@
       tags:
         - 5.0.0-scs-install
 
+
 # /*---------------------------------------------------------------------------8
 # |                                                                            |
-# |                       Playbook for SAP SCS Logging                         |
+# |                              SAP SCS Logging                               |
 # |                                                                            |
 # +------------------------------------4--------------------------------------*/
 
-
-- hosts:                               localhost
-  name:                                Log results
+- name:                                Log results
+  hosts:                               localhost
   gather_facts:                        true
   vars_files:
     - vars/ansible-input-api.yaml                               # API Input template with defaults
@@ -93,5 +86,5 @@
 
 ...
 # /*---------------------------------------------------------------------------8
-# |                                    END                                     |
+# |                                   END                                      |
 # +------------------------------------4--------------------------------------*/
