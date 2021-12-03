@@ -51,12 +51,6 @@
       tags:
         - always
 
-# -------------------------------------+---------------------------------------8
-# Role: 5.2-PAS Installation
-#
-# Description:
-#
-# -------------------------------------+---------------------------------------8
     - block:
         - name:                        Include 2.6-sap-mounts role
           ansible.builtin.include_role:
@@ -64,6 +58,12 @@
       tags:
         - 2.6-sap-mounts
 
+# -------------------------------------+---------------------------------------8
+# Role: 5.2-PAS Installation
+#
+# Description:
+#
+# -------------------------------------+---------------------------------------8
     - block:
         - name:                        Include 5.2-pas-install
           ansible.builtin.include_role:

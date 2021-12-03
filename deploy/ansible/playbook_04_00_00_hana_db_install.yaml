@@ -56,11 +56,7 @@
     - vars/ansible-input-api.yaml      # API Input template with defaults
 
   tasks:
-# -------------------------------------+---------------------------------------8
-#
-# Build the list of tasks to be executed in order here.
-#
-# -------------------------------------+---------------------------------------8
+  
     - name:                            "Install HANA"
       block:
         - name:                        Setting the DB facts
