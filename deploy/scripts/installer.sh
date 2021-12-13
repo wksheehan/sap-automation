@@ -198,13 +198,17 @@ then
     exit 65 #data format error
 fi
 
+
+# Convert the region to the correct code
+get_region_code $region
+
 key=$(echo "${parameterfile_name}" | cut -d. -f1)
 
 #Persisting the parameters across executions
 
 automation_config_directory=~/.sap_deployment_automation/
 generic_config_information="${automation_config_directory}"config
-system_config_information="${automation_config_directory}""${environment}""${region}"
+system_config_information="${automation_config_directory}""${environment}""${region_code}"
 
 deployer_tfstate_key_parameter=''
 landscape_tfstate_key_parameter=''
@@ -641,8 +645,11 @@ if [ 0 == $return_value ] ; then
     then
         deployer_public_ip_address=$(terraform -chdir="${terraform_module_directory}" output deployer_public_ip_address | tr -d \")
         keyvault=$(terraform -chdir="${terraform_module_directory}"  output deployer_kv_user_name | tr -d \")
+        sshsecret=$(terraform -chdir="${terraform_module_directory}"  output deployer_private_key_secret_name | tr -d \")
+
         save_config_var "keyvault" "${system_config_information}"
         save_config_var "deployer_public_ip_address" "${system_config_information}" 
+        save_config_var "sshsecret" "${system_config_information}"
         
     fi
 
@@ -909,9 +916,11 @@ if [ "${deployment_system}" == sap_deployer ]
 then
     deployer_public_ip_address=$(terraform -chdir="${terraform_module_directory}" output deployer_public_ip_address | tr -d \")
     keyvault=$(terraform -chdir="${terraform_module_directory}"  output deployer_kv_user_name | tr -d \")
+    sshsecret=$(terraform -chdir="${terraform_module_directory}"  output deployer_private_key_secret_name | tr -d \")
 
     save_config_var "keyvault" "${system_config_information}"
     save_config_var "deployer_public_ip_address" "${system_config_information}" 
+    save_config_var "sshsecret" "${system_config_information}"
 fi
 
 
