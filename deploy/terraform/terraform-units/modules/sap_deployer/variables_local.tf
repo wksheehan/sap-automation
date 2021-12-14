@@ -35,6 +35,7 @@ variable "tf_version" {
 
 variable "cmdb_connection_string" {
   type = string
+  default = ""
 }
 
 
