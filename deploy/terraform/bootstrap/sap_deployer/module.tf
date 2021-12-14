@@ -20,7 +20,6 @@ module "sap_deployer" {
   use_private_endpoint               = var.use_private_endpoint
   configure                          = false
   tf_version                         = var.tf_version
-  cmdb_connection_string             = module.sap_library.cmdb_connection_string
 }
 
 module "sap_namegenerator" {

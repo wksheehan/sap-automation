@@ -61,6 +61,7 @@ resource "azurerm_app_service_plan" "appserviceplan" {
 
 # Create the web app, pass in the App Service Plan ID, and deploy code from a public GitHub repo
 resource "azurerm_app_service" "webapp" {
+    count               = var.configure ? 1 : 0
     name                = "sapdeployment-${random_integer.priority.result}"
     resource_group_name = local.rg_name
     location            = local.rg_appservice_location

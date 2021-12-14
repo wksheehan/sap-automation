@@ -426,5 +426,7 @@ then
     fi
 fi
 
+TF_VAR_cmdb_connection_string=$(terraform -chdir="${terraform_module_directory}" output cmdb_connection_string | tr -d \")
+export $TF_VAR_cmdb_connection_string
 
 exit $return_value
