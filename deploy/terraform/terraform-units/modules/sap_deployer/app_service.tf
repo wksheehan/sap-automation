@@ -1,7 +1,8 @@
+data "azuread_client_config" "current" {}
 
 resource "azuread_application" "app_registration" {
     display_name     = "SAP-Automation-Form-${random_integer.priority.result}"
-    owners           = [data.azurerm_client_config.deployer.object_id]
+    owners           = [data.azuread_client_config.current.object_id]
     sign_in_audience = "AzureADMyOrg" # This may need to change
     
     api {
