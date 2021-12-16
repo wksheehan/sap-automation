@@ -38,6 +38,14 @@ variable "cmdb_connection_string" {
   default = ""
 }
 
+variable "random_int" {
+  default = 0
+}
+
+variable "app_registration_app_id" {
+  default = ""
+}
+
 
 // Set defaults
 locals {
