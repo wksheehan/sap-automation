@@ -47,5 +47,6 @@ output "storagecontainer_ansible" {
 }
 
 output "cmdb_connection_string" {
+  sensitive = true
   value = azurerm_cosmosdb_account.cmdb.connection_strings[0]
 }
