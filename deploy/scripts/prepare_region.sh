@@ -599,6 +599,13 @@ if [ 2 == $step ]; then
     allParams=$(printf " -p %s -d %s %s" "${library_file_parametername}" "${relative_path}" "${approveparam}")
     
     "${DEPLOYMENT_REPO_PATH}"/deploy/scripts/install_library.sh $allParams
+    echo ""
+    echo "#########################################################################################"
+    echo "#                                                                                       #"
+    echo "#         CMDB connection string: ${TF_VAR_cmdb_connection_string}                 #"
+    echo "#                                                                                       #"
+    echo "#########################################################################################"
+    echo ""
     if (($? > 0)); then
         exit $?
     fi

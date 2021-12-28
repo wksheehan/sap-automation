@@ -21,10 +21,6 @@ variable "use_private_endpoint" {
   default = false
 }
 
-variable "random_int" {
-  default = 0
-}
-
 locals {
 
   storageaccount_names = var.naming.storageaccount_names.LIBRARY
