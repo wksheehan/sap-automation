@@ -426,13 +426,4 @@ then
     fi
 fi
 
-export TF_VAR_cmdb_connection_string=$(terraform -chdir="${terraform_module_directory}" output cmdb_connection_string | tr -d \")
-echo ""
-echo "#########################################################################################"
-echo "#                                                                                       #"
-echo "#         Exporting connection string: ${TF_VAR_cmdb_connection_string}                 #"
-echo "#                                                                                       #"
-echo "#########################################################################################"
-echo ""
-
 exit $return_value
