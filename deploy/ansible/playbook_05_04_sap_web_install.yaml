@@ -1,18 +1,17 @@
----
-
 # /*---------------------------------------------------------------------------8
 # |                                                                            |
-# |                 Preparation for SAP Web Dispatcher Install                 |
+# |                 Playbook for SAP Web Dispatcher Install                    |
 # |                                                                            |
 # +------------------------------------4--------------------------------------*/
+---
 
-- name:                                Get SAP Password from KeyVault
-  hosts:                               localhost
+- hosts:                               localhost
+  name:                                Get SAP Password from KeyVault
   gather_facts:                        true
   vars_files:
-    - vars/ansible-input-api.yaml      # API Input template with defaults
-  
+    - vars/ansible-input-api.yaml                               # API Input template with defaults
   tasks:
+
     - name:                            Remove .step504 flag
       ansible.builtin.file:
         path:                          "{{ _workspace_directory }}/.step504"
@@ -28,23 +27,31 @@
 
 # /*---------------------------------------------------------------------------8
 # |                                                                            |
-# |                         SAP Web Dispatcher Install                         |
+# |                 Playbook for SAP Web Dispatcher Install                    |
 # |                                                                            |
 # +------------------------------------4--------------------------------------*/
 
-- name:                                SAP Installation - WebDispatcher
-  hosts:                               "{{ sap_sid|upper }}_WEB"
-  
+
+- hosts:                               "{{ sap_sid|upper }}_WEB"
+
+  name:                                SAP Installation - WebDispatcher
   remote_user:                         "{{ orchestration_ansible_user }}"
   serial:                              1                                       # /usr/sap/install is an NFS and we share SID/instance number
                                                                                # - must be ran serially
   become:                              true
   become_user:                         root
   gather_facts:                        true
+
   vars_files:
-    - vars/ansible-input-api.yaml      # API Input template with defaults
+    - vars/ansible-input-api.yaml                                               # API Input template with defaults
+
 
   tasks:
+# -------------------------------------+---------------------------------------8
+#
+# Build the list of tasks to be executed in order here.
+#
+# -------------------------------------+---------------------------------------8
     - name:                            Set 'web' tier facts
       ansible.builtin.set_fact:
         tier:                          web
@@ -66,18 +73,18 @@
       tags:
         - 5.4-web-install
 
-
 # /*---------------------------------------------------------------------------8
 # |                                                                            |
-# |                             SAP Web Logging                                |
+# |                       Playbook for SAP Web Logging                         |
 # |                                                                            |
 # +------------------------------------4--------------------------------------*/
 
-- name:                                Log results
-  hosts:                               localhost
+
+- hosts:                               localhost
+  name:                                Log results
   gather_facts:                        true
   vars_files:
-    - vars/ansible-input-api.yaml      # API Input template with defaults
+    - vars/ansible-input-api.yaml                               # API Input template with defaults
 
   tasks:
     - name:                            Create .step504 flag
@@ -89,5 +96,5 @@
 
 ...
 # /*---------------------------------------------------------------------------8
-# |                                   END                                      |
+# |                                    END                                     |
 # +------------------------------------4--------------------------------------*/

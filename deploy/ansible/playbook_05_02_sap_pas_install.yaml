@@ -1,18 +1,17 @@
----
-
 # /*---------------------------------------------------------------------------8
 # |                                                                            |
 # |                       Prepare for SAP PAS Install                          |
 # |                                                                            |
 # +------------------------------------4--------------------------------------*/
+---
 
-- name:                                Get SAP Password from KeyVault
-  hosts:                               localhost
+- hosts:                               localhost
+  name:                                Get SAP Password from KeyVault
   gather_facts:                        true
   vars_files:
     - vars/ansible-input-api.yaml                               # API Input template with defaults
-
   tasks:
+
     - name:                            Remove .step502 flag
       ansible.builtin.file:
         path:                          "{{ _workspace_directory }}/.step502"
@@ -28,13 +27,14 @@
 
 # /*---------------------------------------------------------------------------8
 # |                                                                            |
-# |                              SAP PAS Install                               |
+# |                       Playbook for SAP PAS Install                         |
 # |                                                                            |
 # +------------------------------------4--------------------------------------*/
 
-- name:                                SAP Installation - PAS
-  hosts:                               "{{ sap_sid|upper }}_PAS"
 
+- hosts:                               "{{ sap_sid|upper }}_PAS"
+
+  name:                                SAP Installation - PAS
   remote_user:                         "{{ orchestration_ansible_user }}"
   become:                              true
   become_user:                         root
@@ -42,7 +42,13 @@
   vars_files:
     - vars/ansible-input-api.yaml                                               # API Input template with defaults
 
+
   tasks:
+# -------------------------------------+---------------------------------------8
+#
+# Build the list of tasks to be executed in order here.
+#
+# -------------------------------------+---------------------------------------8
 
     - name:                            Set 'pas' tier facts
       ansible.builtin.set_fact:
@@ -51,6 +57,13 @@
       tags:
         - always
 
+# -------------------------------------+---------------------------------------8
+# Role: 5.2-PAS Installation
+#
+# Description:
+#
+# -------------------------------------+---------------------------------------8
+
     - block:
         - name:                        Include 2.6-sap-mounts role
           ansible.builtin.include_role:
@@ -58,12 +71,6 @@
       tags:
         - 2.6-sap-mounts
 
-# -------------------------------------+---------------------------------------8
-# Role: 5.2-PAS Installation
-#
-# Description:
-#
-# -------------------------------------+---------------------------------------8
     - block:
         - name:                        Include 5.2-pas-install
           ansible.builtin.include_role:
@@ -71,15 +78,15 @@
       tags:
         - 5.2-pas-install
 
-
 # /*---------------------------------------------------------------------------8
 # |                                                                            |
-# |                             SAP SCS Logging                                |
+# |                       Playbook for SAP SCS Logging                         |
 # |                                                                            |
 # +------------------------------------4--------------------------------------*/
 
-- name:                                Log results
-  hosts:                               localhost
+
+- hosts:                               localhost
+  name:                                Log results
   gather_facts:                        true
   vars_files:
     - vars/ansible-input-api.yaml                               # API Input template with defaults
@@ -94,5 +101,5 @@
 
 ...
 # /*---------------------------------------------------------------------------8
-# |                                   END                                      |
+# |                                    END                                     |
 # +------------------------------------4--------------------------------------*/

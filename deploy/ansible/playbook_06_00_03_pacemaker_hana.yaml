@@ -1,14 +1,13 @@
+# /*----------------------------------------------------------------------------8
+# |                                                                            |
+# |                      Playbook for PACEMAKER config of HANA                  |
+# |                                                                            |
+# +------------------------------------4--------------------------------------*/
 ---
 
-# /*----------------------------------------------------------------------------8
-# |                                                                             |
-# |                      Playbook for PACEMAKER config of HANA                  |
-# |                                                                             |
-# +------------------------------------4---------------------------------------*/
+- hosts:                               "{{ sap_sid|upper }}_DB"
 
-- name:                                PACEMAKER - HANA
-  hosts:                               "{{ sap_sid|upper }}_DB"
-
+  name:                                PACEMAKER - HANA
   remote_user:                         "{{ orchestration_ansible_user }}"
   become:                              true
   become_user:                         root
@@ -18,22 +17,27 @@
 
   tasks:
 
-
 # /*---------------------------------------------------------------------------8
 # |                                                                            |
 # |                       Retrieving the SPN details                           |
 # |                                                                            |
 # +------------------------------------4--------------------------------------*/
 
-- name:                                Get SPN from KeyVault
-  hosts:                               localhost
-
+- hosts:                               localhost
+  name:                                Get SPN from KeyVault
   remote_user:                         "{{ orchestration_ansible_user }}"
   become:                              false
   become_user:                         root
   gather_facts:                        true
   vars_files:
     - vars/ansible-input-api.yaml                               # API Input template with defaults
+
+# -------------------------------------+---------------------------------------8
+#
+# Build the list of tasks to be executed in order here.
+#
+# -------------------------------------+---------------------------------------8
+
 
   tasks:
 
@@ -60,10 +64,9 @@
         - 0.1-passwords
 
 
-# /*---------------------------------------------------------------------------8
-# |                                   END                                      |
+# /*----------------------------------------------------------------------------8
+# |                                    END                                      |
 # +------------------------------------4--------------------------------------*/
-
 
 # /*---------------------------------------------------------------------------8
 # |                                                                            |
@@ -71,9 +74,8 @@
 # |                                                                            |
 # +------------------------------------4--------------------------------------*/
 
-- name:                                "PACEMAKER - HANA"
-  hosts:                               "{{ sap_sid|upper }}_DB"
-
+- hosts:                               "{{ sap_sid|upper }}_DB"
+  name:                                "PACEMAKER - HANA"
   remote_user:                         "{{ orchestration_ansible_user }}"
   become:                              true
   become_user:                         root
@@ -82,7 +84,11 @@
     - vars/ansible-input-api.yaml                               # API Input template with defaults
 
   tasks:
-
+# -------------------------------------+---------------------------------------8
+#
+# Build the list of tasks to be executed in order here.
+#
+# -------------------------------------+---------------------------------------8
     - name:                            Print the fencing tenant id
       debug:
         msg:                           "{{ hostvars.localhost.sap_fencing_spn_tenant_id }}"
@@ -109,7 +115,6 @@
           when:                           db_high_availability
       tags:
         - 1.11-accounts
-
     - block:
         - name:                           Run the Pacemaker role
           include_role:
@@ -118,24 +123,24 @@
       tags:
         - 5.5-hanadb-pacemaker
 
-
 # /*---------------------------------------------------------------------------8
 # |                                                                            |
-# |                           Logging the results                              |
+# |                       Logging the results                                  |
 # |                                                                            |
 # +------------------------------------4--------------------------------------*/
 
-- name:                                Log results
-  hosts:                               localhost
 
+- hosts:                               localhost
+  name:                                Log results
   remote_user:                         "{{ orchestration_ansible_user }}"
   become:                              false
   become_user:                         root
   gather_facts:                        true
   vars_files:
-    - vars/ansible-input-api.yaml      # API Input template with defaults
+    - vars/ansible-input-api.yaml                               # API Input template with defaults
 
   tasks:
+
     - name:                            Ensure the step file exists
       ansible.builtin.file:
         path:                          "{{ _workspace_directory }}/.step603"
@@ -144,6 +149,8 @@
 
 
 ...
+
+
 # /*----------------------------------------------------------------------------8
-# |                                   END                                       |
-# +------------------------------------4---------------------------------------*/
+# |                                    END                                      |
+# +------------------------------------4--------------------------------------*/

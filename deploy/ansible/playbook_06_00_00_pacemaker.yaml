@@ -1,20 +1,18 @@
+# /*----------------------------------------------------------------------------8
+# |                                                                             |
+# | Playbook for PACEMAKER General Config                                       |
+# | This playbook will setup a generic pacemaker cluster on DB and SCS hosts    |
+# | The playbook user Azure fence Agent for node fencing. It gets the SPN       |
+# | credentials from Key Vault. These credentials are used to create Stonith.  |
+# +------------------------------------4---------------------------------------*|
 ---
 
-# /*-----------------------------------------------------------------------------8
-# |                                                                              |
-# |                   Playbook for PACEMAKER General Config                      |
-# |                                                                              |
-# |  This playbook will setup a generic pacemaker cluster on DB and SCS hosts    |
-# |  The playbook user Azure fence Agent for node fencing. It gets the SPN       |
-# |  credentials from Key Vault. These credentials are used to create Stonith.   |
-# |                                                                              |
-# +------------------------------------4----------------------------------------*/
 
-- name:                                Get Secrets from KeyVault
-  hosts:                               localhost
+- hosts:                               localhost
+  name:                                Get Secrets from KeyVault
   gather_facts:                        true
   vars_files:
-    - vars/ansible-input-api.yaml      # API Input template with defaults
+    - vars/ansible-input-api.yaml                               # API Input template with defaults
 
   tasks:
     - name:                            Set 'ha' tier facts
@@ -41,21 +39,28 @@
         - 0.2-kv-secrets
 
 
-# /*---------------------------------------------------------------------------8
-# |                                                                            |
-# |                           Pacemaker Install                                |
-# |                                                                            |
-# +------------------------------------4--------------------------------------*/
-
-- name:                                PACEMAKER - General Config - Database
-  hosts:                               "{{ sap_sid|upper }}_DB"
-  
+- hosts:                               "{{ sap_sid|upper }}_DB"
+  name:                                PACEMAKER - General Config - Database
   remote_user:                         "{{ orchestration_ansible_user }}"
   become:                              true
   become_user:                         root
   gather_facts:                        true
   vars_files:
-    - vars/ansible-input-api.yaml      # API Input template with defaults
+    - vars/ansible-input-api.yaml                               # API Input template with defaults
+
+
+# /*---------------------------------------------------------------------------8
+# |                                                                            |
+# |                 Playbook for Pacemaker Install                             |
+# |                                                                            |
+# +------------------------------------4--------------------------------------*/
+
+
+# -------------------------------------+---------------------------------------8
+#
+# Build the list of tasks to be executed in order here.
+#
+# -------------------------------------+---------------------------------------8
 
 # Specify the active tier for this playbook run
 
@@ -128,23 +133,29 @@
       tags:
         - 1.17-generic-pacemaker
 
-
 # /*---------------------------------------------------------------------------8
 # |                                                                            |
-# |                          Pacemaker Install SCS                             |
+# |                 Playbook for Pacemaker Install SCS                         |
 # |                                                                            |
 # +------------------------------------4--------------------------------------*/
 
-- name:                                PACEMAKER - General - Config - Central Services
-  hosts:                               "{{ sap_sid|upper }}_SCS :
+
+- hosts:                               "{{ sap_sid|upper }}_SCS :
                                         {{ sap_sid|upper }}_ERS"
 
+  name:                                PACEMAKER - General - Config - Central Services
   remote_user:                         "{{ orchestration_ansible_user }}"
   become:                              true
   become_user:                         root
   gather_facts:                        true
   vars_files:
-    - vars/ansible-input-api.yaml      # API Input template with defaults
+    - vars/ansible-input-api.yaml                               # API Input template with defaults
+
+# -------------------------------------+---------------------------------------8
+#
+# Build the list of tasks to be executed in order here.
+#
+# -------------------------------------+---------------------------------------8
 
 # Specify the active tier for this playbook run
 
@@ -171,15 +182,16 @@
 
 # /*---------------------------------------------------------------------------8
 # |                                                                            |
-# |                         Generic Pacemaker Logging                          |
+# |                       Playbook for Generic Pacemaker Logging               |
 # |                                                                            |
 # +------------------------------------4--------------------------------------*/
 
-- name:                                Log results
-  hosts:                               localhost
+
+- hosts:                               localhost
+  name:                                Log results
   gather_facts:                        true
   vars_files:
-    - vars/ansible-input-api.yaml      # API Input template with defaults
+    - vars/ansible-input-api.yaml                               # API Input template with defaults
 
   tasks:
     - name:                            Create .step6 flag
@@ -191,5 +203,5 @@
 
 ...
 # /*---------------------------------------------------------------------------8
-# |                                   END                                      |
+# |                                    END                                     |
 # +------------------------------------4--------------------------------------*/

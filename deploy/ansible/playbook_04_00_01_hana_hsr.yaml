@@ -1,22 +1,19 @@
----
-
-# /*---------------------------------------------------------------------------8
+# /*----------------------------------------------------------------------------8
 # |                                                                            |
-# |                               HANA DB HSR                                  |
+# |                      Playbook for HANA DB HSR                          |
 # |                                                                            |
 # +------------------------------------4--------------------------------------*/
+---
 
-- name:                                Get SAP Password from KeyVault
-  hosts:                               localhost
+- hosts:                               localhost
+  name:                                Get SAP Password from KeyVault
   gather_facts:                        true
   vars_files:
     - vars/ansible-input-api.yaml      # API Input template with defaults
-
   tasks:
 
     - name:                            Initialization
       block:
-
         - name:                            Initialize facts
           set_fact:
             tier:                          fencing
@@ -38,27 +35,29 @@
           ansible.builtin.file:
             path:                          "{{ _workspace_directory }}/.step401"
             state:                         absent
-
       when:                            db_high_availability
 
 
-# /*---------------------------------------------------------------------------8
-# |                                                                            |
-# |                         HANA DB System Replication                         |
-# |                                                                            |
-# +------------------------------------4--------------------------------------*/
+# Steps:
+#   01) Hana DB system replication
+#
 
-- name:                                HANA HA Configuration
-  hosts:                               "{{ sap_sid|upper }}_DB"
+- hosts:                               "{{ sap_sid|upper }}_DB"
 
+  name:                                HANA HA Configuration
   remote_user:                         "{{ orchestration_ansible_user }}"
   become:                              true
   become_user:                         root
   gather_facts:                        true
   vars_files:
-    - vars/ansible-input-api.yaml      # API Input template with defaults
+    - vars/ansible-input-api.yaml                               # API Input template with defaults
 
   tasks:
+# -------------------------------------+---------------------------------------8
+#
+# Build the list of tasks to be executed in order here.
+#
+# -------------------------------------+---------------------------------------8
 
     - name:                            "Install HSR"
       block:
@@ -118,18 +117,10 @@
 
       when:                            db_high_availability
 
-
-# /*---------------------------------------------------------------------------8
-# |                                                                            |
-# |                                 Logging                                    |
-# |                                                                            |
-# +------------------------------------4--------------------------------------*/
-
-- name:                                Log results
-  hosts:                               localhost
+- hosts:                               localhost
+  name:                                Log results
   vars_files:
     - vars/ansible-input-api.yaml      # API Input template with defaults
-  
   tasks:
     - name:                            Ensure step file exists
       ansible.builtin.file:
@@ -141,5 +132,5 @@
 
 ...
 # /*----------------------------------------------------------------------------8
-# |                                   END                                       |
-# +------------------------------------4---------------------------------------*/
+# |                                    END                                      |
+# +------------------------------------4--------------------------------------*/

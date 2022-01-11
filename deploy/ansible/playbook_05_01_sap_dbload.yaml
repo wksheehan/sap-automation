@@ -1,16 +1,15 @@
----
-
 # /*---------------------------------------------------------------------------8
 # |                                                                            |
 # |                      Prepare for SAP DB Load                               |
 # |                                                                            |
 # +------------------------------------4--------------------------------------*/
+---
 
-- name:                                Get SAP Password from KeyVault
-  hosts:                               localhost
+- hosts:                               localhost
+  name:                                Get SAP Password from KeyVault
   gather_facts:                        true
   vars_files:
-    - vars/ansible-input-api.yaml      # API Input template with defaults
+    - vars/ansible-input-api.yaml                               # API Input template with defaults
 
   tasks:
 
@@ -26,25 +25,29 @@
         path:                          "{{ _workspace_directory }}/.step501"
         state:                          absent
 
-
 # /*---------------------------------------------------------------------------8
 # |                                                                            |
-# |                               SAP DB Load                                  |
+# |                      Playbook for SAP DB Load                              |
 # |                                                                            |
 # +------------------------------------4--------------------------------------*/
 
-- name:                                DB Installation - HANA
-  hosts:                               "{{ sap_sid|upper }}_PAS"
 
+- hosts:                               "{{ sap_sid|upper }}_PAS"
+
+  name:                                DB Installation - HANA
   remote_user:                         "{{ orchestration_ansible_user }}"
   become:                              true
   become_user:                         root
   gather_facts:                        true
   vars_files:
-    - vars/ansible-input-api.yaml      # API Input template with defaults
+    - vars/ansible-input-api.yaml                               # API Input template with defaults
 
   tasks:
-
+# -------------------------------------+---------------------------------------8
+#
+# Build the list of tasks to be executed in order here.
+#
+# -------------------------------------+---------------------------------------8
     - name:                            Setting the dbload facts
       ansible.builtin.set_fact:
         tier:                          dbload                                                          # SAP Install phase: DBLOAD
@@ -66,18 +69,17 @@
       tags:
         - 5.1-dbload
 
-
-# /*---------------------------------------------------------------------------8
+# /*----------------------------------------------------------------------------8
 # |                                                                            |
-# |                             HANA DB Logging                                |
+# |                         PLAYBOOK FOR HANA DB LOGGING                       |
 # |                                                                            |
 # +------------------------------------4--------------------------------------*/
 
-- name:                                Log results
-  hosts:                               localhost
+- hosts:                               localhost
+  name:                                Log results
   gather_facts:                        true
   vars_files:
-    - vars/ansible-input-api.yaml      # API Input template with defaults
+    - vars/ansible-input-api.yaml                               # API Input template with defaults
 
   tasks:
     - name:                           Create .step501 flag
@@ -89,5 +91,5 @@
 
 ...
 # /*----------------------------------------------------------------------------8
-# |                                   END                                       |
-# +------------------------------------4---------------------------------------*/
+# |                                    END                                      |
+# +------------------------------------4--------------------------------------*/
