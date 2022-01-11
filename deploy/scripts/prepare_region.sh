@@ -123,7 +123,6 @@ if [ -n "${subscription}" ]; then
     ARM_SUBSCRIPTION_ID="${subscription}"
     export ARM_SUBSCRIPTION_ID=$subscription
 fi
-
 # Check that the exports ARM_SUBSCRIPTION_ID and DEPLOYMENT_REPO_PATH are defined
 validate_exports
 return_code=$?
