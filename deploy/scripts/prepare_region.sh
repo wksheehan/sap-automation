@@ -124,88 +124,11 @@ if [ -n "${subscription}" ]; then
     export ARM_SUBSCRIPTION_ID=$subscription
 fi
 
-if [ ! -n "$DEPLOYMENT_REPO_PATH" ]; then
-    echo ""
-    echo ""
-    echo "#########################################################################################"
-    echo "#                                                                                       #"
-    echo -e "#  $boldred Missing environment variables (DEPLOYMENT_REPO_PATH)!!! $resetformatting       #"
-    echo "#                                                                                       #"
-    echo "#   Please export the following variables:                                              #"
-    echo "#      DEPLOYMENT_REPO_PATH (path to the repo folder (sap-automation))                  #"
-    echo "#      ARM_SUBSCRIPTION_ID (subscription containing the state file storage account)     #"
-    echo "#      TF_VAR_random_int (random integer for web app creation)                          #"
-    echo "#      TF_VAR_app_registration_app_id (web app registration)                            #"
-    echo "#                                                                                       #"
-    echo "#########################################################################################"
-    exit 65                                                                                           #data format error
-fi
-
-templen=$(echo "${ARM_SUBSCRIPTION_ID}" | wc -c)
-# Subscription length is 37
-if [ 37 != $templen ]; then
-    arm_config_stored=0
-fi
-
-if [ ! -n "$ARM_SUBSCRIPTION_ID" ]; then
-    echo ""
-    echo "#########################################################################################"
-    echo "#                                                                                       #"
-    echo -e "#  $boldred Missing environment variables (ARM_SUBSCRIPTION_ID)!!! $resetformatting       #"
-    echo "#                                                                                       #"
-    echo "#   Please export the following variables:                                              #"
-    echo "#      DEPLOYMENT_REPO_PATH (path to the repo folder (sap-automation))                  #"
-    echo "#      ARM_SUBSCRIPTION_ID (subscription containing the state file storage account)     #"
-    echo "#      TF_VAR_random_int (random integer for web app creation)                          #"
-    echo "#      TF_VAR_app_registration_app_id (web app registration)                            #"
-    echo "#                                                                                       #"
-    echo "#########################################################################################"
-    exit 65                                                                                           #data format error
-else
-    if [ "${arm_config_stored}" != 0 ]; then
-        echo "Storing the configuration"
-        save_config_var "ARM_SUBSCRIPTION_ID" "${deployer_config_information}"
-    fi
-
 # Check that the exports ARM_SUBSCRIPTION_ID and DEPLOYMENT_REPO_PATH are defined
 validate_exports
 return_code=$?
 if [ 0 != $return_code ]; then
     exit $return_code
-fi
-
-if [ ! -n "$TF_VAR_random_int" ]; then
-    echo ""
-    echo ""
-    echo "#########################################################################################"
-    echo "#                                                                                       #"
-    echo -e "#  $boldred Missing environment variables (TF_VAR_random_int)!!! $resetformatting       #"
-    echo "#                                                                                       #"
-    echo "#   Please export the following variables:                                              #"
-    echo "#      DEPLOYMENT_REPO_PATH (path to the repo folder (sap-automation))                  #"
-    echo "#      ARM_SUBSCRIPTION_ID (subscription containing the state file storage account)     #"
-    echo "#      TF_VAR_random_int (random integer for web app creation)                          #"
-    echo "#      TF_VAR_app_registration_app_id (web app registration)                            #"
-    echo "#                                                                                       #"
-    echo "#########################################################################################"
-    exit 65                                                                                           #data format error
-fi
-
-if [ ! -n "$TF_VAR_app_registration_app_id" ]; then
-    echo ""
-    echo ""
-    echo "#########################################################################################"
-    echo "#                                                                                       #"
-    echo -e "#  $boldred Missing environment variables (TF_VAR_app_registration_app_id)!!! $resetformatting       #"
-    echo "#                                                                                       #"
-    echo "#   Please export the following variables:                                              #"
-    echo "#      DEPLOYMENT_REPO_PATH (path to the repo folder (sap-automation))                  #"
-    echo "#      ARM_SUBSCRIPTION_ID (subscription containing the state file storage account)     #"
-    echo "#      TF_VAR_random_int (random integer for web app creation)                          #"
-    echo "#      TF_VAR_app_registration_app_id (web app registration)                            #"
-    echo "#                                                                                       #"
-    echo "#########################################################################################"
-    exit 65                                                                                           #data format error
 fi
 
 deployer_dirname=$(dirname "${deployer_parameter_file}")
