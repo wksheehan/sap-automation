@@ -1,0 +1,150 @@
+---
+
+- name:                                Optimise the Pacemaker cluster for SAP HANA
+  block:
+    - name:                            Enable Maintenance mode for the cluster
+      cluster_property:
+        name: maintenance-mode
+        value: "true"
+    
+    - name:                            "SUSE: cluster setup"
+      block:
+        - name:                        Ensure CIB Bootstrap Options are set
+          cluster_property:
+            name: "{{ item.name }}"
+            value: "{{ item.value }}"
+            loop:
+            - { name: no-quorum-policy, value: "ignore"}
+            - { name: stonith-enabled, value: "true"}
+            - { name: stonith-action, value: "reboot"}
+            - { name: stonith-timeout, value: "900"}
+          
+        - name: Ensure the Resource Defaults are configured
+          cluster_defaults:
+            name: "{{ item.name }}"
+            value: "{{ item.value }}"
+            defaults_type: rsc
+            loop:
+            - { name: resource-stickiness, value: "1000" }
+            - { name: migration-threshold, value: "5000" }
+      
+      when: ansible_os_family == "Suse"
+
+    - name:                            Ensure the SAP HANA Topology resource is created
+      cluster_resource:
+        state: present
+        name: SAPHanaTopology_{{ db_sid | upper }}_{{ hdb_instance_number }}
+        resource_type: SAPHanaTopology
+        options: |
+          SID={{ db_sid | upper }} InstanceNumber={{ hdb_instance_number }}
+          op start timeout=600
+          op stop timeout=300
+          op monitor interval=10 timeout=600
+    
+    - name:                            Ensure the SAP HANA Topology resource is cloned
+      cluster_clone:
+        state: present
+        resource_name: SAPHanaTopology_{{ db_sid | upper }}_{{ hdb_instance_number }}
+        options: |
+          clone clone-max=2 clone-node-max=1 target-role="Started" interleave="true"
+
+    - name:                            Ensure the SAP HANA resource is created
+      cluster_resource:
+        state: present
+        name: SAPHana_{{ db_sid | upper }}_{{ hdb_instance_number }}
+        resource_type: SAPHana
+        options: |
+          SID={{ db_sid | upper }} InstanceNumber={{ hdb_instance_number }}
+          PREFER_SITE_TAKEOVER=true DUPLICATE_PRIMARY_TIMEOUT=7200
+          AUTOMATED_REGISTER=false
+          op start timeout={{ cluster_sap_hana_timeouts.start }}
+          op stop timeout={{ cluster_sap_hana_timeouts.stop }}
+          op monitor interval=59 role="Master" timeout={{ cluster_sap_hana_timeouts.monitor_master }}
+          op monitor interval=61 role="Slave" timeout={{ cluster_sap_hana_timeouts.monitor_slave }}
+          op promote timeout={{ cluster_sap_hana_timeouts.promote }}
+          op demote timeout={{ cluster_sap_hana_timeouts.demote }}
+    
+    - name:                            Ensure the SAP HANA resource is cloned
+      cluster_clone:
+        state: present
+        resource_name: SAPHana_{{ db_sid | upper }}_{{ hdb_instance_number }}
+        clone_type: promotable
+        options: |
+          notify=true clone-max=2 clone-node-max=1 target-role="Started" interleave=true
+
+    - name:                            Ensure the Virtual IP resource for the Load Balancer Front End IP is created
+      cluster_resource:
+        state: present
+        name: vip_{{ db_sid | upper }}_{{ hdb_instance_number }}
+        resource_type: IPaddr2
+        options: |
+          ip="{{ db_lb_ip }}" op monitor interval="10s" timeout="20s" meta target-role="Started"
+    
+    - name:                            Ensure the netcat resource for the Load Balancer Healthprobe is created
+      cluster_resource:
+        state: present
+        name: nc_{{ db_sid | upper }}_{{ hdb_instance_number }}
+        resource_type: azure-lb
+        options: |
+          port=625{{ hdb_instance_number }} meta resource-stickiness=0
+
+    - name:                            Ensure the Virtual IP group resource is created
+      cluster_group:
+        state: present
+        name: g_ip_{{ db_sid | upper }}_{{ hdb_instance_number }}
+        resources: nc_{{ db_sid | upper }}_{{ hdb_instance_number }} vip_{{ db_sid | upper }}_{{ hdb_instance_number }}
+
+    - name:                            Ensure the order constraint for the SAP HANA Topology is configured
+      cluster_order:
+        state: present
+        first_resource: SAPHanaTopology_{{ db_sid | upper }}_{{ hdb_instance_number }}-clone
+        second_resource: SAPHana_{{ db_sid | upper }}_{{ hdb_instance_number }}-clone
+        symmetrical: "false"
+        kind: "Optional"
+
+    - name:                            Ensure the Virtual IP group is configured to the Master node
+      cluster_colocation:
+        state: present
+        source_resource: g_ip_{{ db_sid | upper }}_{{ hdb_instance_number }}
+        source_role: Started
+        target_resource: SAPHana_{{ db_sid | upper }}_{{ hdb_instance_number }}-clone
+        target_role: Master
+        score: "4000"
+
+    - name:                            Disable Maintenance mode for the cluster
+      cluster_property: 
+        name: maintenance-mode
+        value: "false"
+    
+    - name:
+      when: ansible_os_family == "Suse"
+      ansible.builtin.command: "crm resource cleanup rsc_SAPHana_{{ db_sid | upper }}_HDB{{ hdb_instance_number }}"
+      
+      
+    - name:                            "RHEL: Ensure resources are started"
+      block:
+        - name:                            Ensure Cluster resources are started
+          ansible.builtin.shell:           pcs resource show | grep '    Started:'
+          register:                        hana_cluster_resource_check
+          retries:                         12
+          delay:                           10
+          until:                           " (primary_instance_name + ' ' + secondary_instance_name) in hana_cluster_resource_check.stdout or (secondary_instance_name + ' ' + primary_instance_name) in hana_cluster_resource_check.stdout"
+
+          when:                            ansible_distribution_major_version != "8"
+          tags:
+            - skip_ansible_lint
+
+        - name:                            Ensure Cluster resources are started
+          ansible.builtin.shell:           pcs resource status | grep '\* Started:'
+          register:                        hana_cluster_resource_check
+          retries:                         12
+          delay:                           10
+          until:                           " (primary_instance_name + ' ' + secondary_instance_name) in hana_cluster_resource_check.stdout or (secondary_instance_name + ' ' + primary_instance_name) in hana_cluster_resource_check.stdout"
+          when:                            ansible_distribution_major_version == "8"
+          tags:
+            - skip_ansible_lint
+      when: ansible_os_family == "RedHat"
+
+  when: ansible_hostname == primary_instance_name
+
+

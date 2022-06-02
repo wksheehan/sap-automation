@@ -1,0 +1,201 @@
+---
+
+- name:                                "5.6 SCSERS - Cluster Configuration before Install"
+  throttle:                            1
+  block:
+
+    - name:                            "5.6 SCSERS - Configure cluster default properties"
+      cluster_defaults:
+        name: "{{ item.name }}"
+        value: "{{ item.value }}"
+        defaults_type: rsc
+        loop:
+        - { name: resource-stickiness, value: "1" }
+        - { name: migration-threshold, value: "3" }
+
+    - name:                            "5.6 SCSERS - Put Secondary host on standby"
+      node_online:
+        online: "false"
+        node: "{{ secondary_instance_name }}"
+
+    - name:                            "5.6 SCSERS - SCS - Configure File system resources"
+      cluster_resource:
+        name: fs_{{ sap_sid }}_ASCS
+        resource_type: Filesystem
+        options: |
+          device='{{ sap_mnt }}/usrsap{{ sap_sid }}ascs{{ scs_instance_number }}'
+          directory='/usr/sap/{{ sap_sid | upper }}/ASCS{{ scs_instance_number }}' fstype='nfs' force_unmount=safe options='sec=sys,vers=4.1'
+          op start timeout="{{ cluster_sap_scs_timeouts.start }}" interval=0
+          op stop timeout="{{ cluster_sap_scs_timeouts.stop }}"  interval=0
+          op monitor interval="20s" timeout="40s"
+
+    - name:                            "5.6 SCSERS - SCS - Create ASCS VIP - This is LB frontend ASCS/SCS IP"
+      cluster_resource:
+        name: vip_{{ sap_sid }}_ASCS
+        resource_type: IPaddr2
+        options: ip={{ scs_lb_ip }} cidr_netmask={{ subnet_prefix }} op monitor interval="10s" timeout="20s"
+      
+    - name:                            "5.6 SCSERS - SCS - create Azure LB resource"
+      cluster_resource:
+        name: nc_{{ sap_sid }}_ASCS
+        resource_type: azure-lb
+        options: port=620{{ scs_instance_number }}
+     
+    - name:                            "Add resources to group"
+      cluster_group:
+        name: g-{{ sap_sid }}_ASCS
+        resources: fs_{{ sap_sid }}_ASCS vip_{{ sap_sid }}_ASCS nc_{{ sap_sid }}_ASCS
+        options: meta resource-stickiness=3000
+
+  when: inventory_hostname == primary_instance_name
+
+# [1] Install SAP NetWeaver ASCS - this is where we call the SCS role
+- name:                                "5.6 SCSERS - SCS - Install SCS on Primary host"
+  throttle:                            1
+  block:
+    - name:                            "5.6 SCSERS - Bring Primary host online "
+      node_online:
+        online: "true"
+        node: "{{ primary_instance_name }}"
+
+    - name:                            "5.6 SCSERS - Put Secondary host on standby"
+      node_online:
+        online: "false"
+        node: "{{ secondary_instance_name }}"
+
+    - name:                            "5.6 SCSERS - SCS - Assign ownership"
+      ansible.builtin.file:
+        path:                          "{{ item.path }}"
+        owner:                         "{{ sap_sid | lower}}adm"
+        group:                         sapsys
+      loop:
+        -  { path: '/sapmnt/{{ sap_sid|upper }}' }
+        -  { path: '/usr/sap/{{ sap_sid|upper }}/SYS' }
+        -  { path: '/usr/sap/{{ sap_sid }}/ASCS{{ scs_instance_number }}' }
+      when: inventory_hostname == primary_instance_name
+      tags:
+        - skip_ansible_lint
+
+    - name:                            "5.6 SCSERS - SCS - Install SCS on Primary host"
+      ansible.builtin.include_role:
+        name:                          roles-sap/5.0.1-scs-ha-install
+  when: inventory_hostname == primary_instance_name
+
+# [1] Create a virtual IP resource and health-probe for the ERS instance
+
+- name:                                "5.6 SCSERS - ERS - Cluster Configuration before Install "
+  throttle:                            1
+  block:
+    - name:                            "5.6 SCSERS - Put Secondary host on online"
+      node_online:
+        online: "true"
+        node: "{{ secondary_instance_name }}"
+
+    - name:                            "5.6 SCSERS - Put Primary host on standby"
+      node_online:
+        online: "false"
+        node: "{{ primary_instance_name }}"
+
+    - name:                            "5.6 SCSERS - ERS - Configure File system resources"
+      cluster_resource:
+        name: fs_{{ sap_sid }}_ERS
+        resource_type: Filesystem
+        options: |
+          device='{{ sap_mnt }}/usrsap{{ sap_sid }}ers{{ ers_instance_number }}'
+          directory='/usr/sap/{{ sap_sid | upper }}/ERS{{ ers_instance_number }}' fstype='nfs' force_unmount=safe options='sec=sys,vers=4.1'
+          op start timeout="{{ cluster_sap_scs_timeouts.start }}" interval=0
+          op stop timeout="{{ cluster_sap_scs_timeouts.stop }}" interval=0
+          op monitor interval="20s" timeout="40s"
+    
+    - name:                            "5.6 SCSERS - ERS - Create ERS VIP - This is LB frontend ERS IP"
+      cluster_resource:
+        name: vip_{{ sap_sid }}_ERS
+        resource_type: IPaddr2
+        options: ip={{ ers_lb_ip }} cidr_netmask=24 op monitor interval="10s" timeout="20s"
+    
+    - name:                            "5.6 SCSERS - ERS - create Azure LB resource "
+      cluster_resource:
+        name: nc_{{ sap_sid }}_ERS
+        resource_type: azure-lb
+        options: port=621{{ ers_instance_number }}
+
+    - name:                            "5.6 SCSERS - ERS - create Azure LB resource "
+      cluster_group:
+        name: g-{{ sap_sid }}_ERS
+        resources: fs_{{ sap_sid }}_ERS vip_{{ sap_sid }}_ERS nc_{{ sap_sid }}_ERS
+        options: meta resource-stickiness=3000
+
+  when: inventory_hostname == primary_instance_name
+
+# [2] Install SAP NetWeaver ERS - Build a new role for ERS Installation - done
+
+- name:                                "5.6 SCSERS - Install ERS on Secondary host"
+  throttle:                            1
+  block:
+
+    - name:                            "5.6 SCSERS - Bring Secondary host online"
+      node_online:
+        online: "true"
+        node: "{{ secondary_instance_name }}"
+
+    - name:                            "5.6 SCSERS - Put Primary host on standby"
+      node_online:
+        online: "false"
+        node: "{{ primary_instance_name }}"
+
+    - name:                            "5.6 SCSERS - ERS - Assign ownership"
+      ansible.builtin.file:
+        path:                          "{{ item.path }}"
+        owner:                         "{{ sap_sid | lower}}adm"
+        group:                         sapsys
+        state:                         directory
+      loop:
+        -  { path: '/sapmnt/{{ sap_sid|upper }}' }
+        -  { path: '/usr/sap/{{ sap_sid|upper }}/SYS' }
+        -  { path: '/usr/sap/{{ sap_sid }}/ERS{{ ers_instance_number }}' }
+      when: inventory_hostname == secondary_instance_name
+      tags:
+        - skip_ansible_lint
+
+    - name:                            "5.6 SCSERS - ERS - Install on Secondary host"
+      ansible.builtin.include_role:
+        name:                          roles-sap/5.0.2-ers-ha-install
+
+  always:
+    - name:                            "5.6 SCSERS - Put Primary host on line"
+      node_online:
+        online: "true"
+        node: "{{ primary_instance_name }}"
+
+  when: inventory_hostname == secondary_instance_name
+
+# [A] Add firewall rules for ASCS and ERS on both nodes Add the firewall rules for ASCS and ERS on both nodes.
+- name:                                 "5.6 SCSERS - Add firewall rules for ASCS and ERS on both nodes"
+  ansible.builtin.firewalld:
+    zone:                               public
+    port:                               "{{ item.port }}/tcp"
+    permanent:                          true
+    state:                              enabled
+  with_items:
+    - { port: "620{{ scs_instance_number }}" }
+    - { port: "32{{ scs_instance_number }}" }
+    - { port: "36{{ scs_instance_number }}" }
+    - { port: "39{{ scs_instance_number }}" }
+    - { port: "81{{ scs_instance_number }}" }
+    - { port: "5{{ scs_instance_number }}13" }
+    - { port: "5{{ scs_instance_number }}14" }
+    - { port: "5{{ scs_instance_number }}16" }
+    - { port: "621{{ ers_instance_number }}" }
+    - { port: "32{{ ers_instance_number }}" }
+    - { port: "36{{ ers_instance_number }}" }
+    - { port: "39{{ ers_instance_number }}" }
+    - { port: "81{{ ers_instance_number }}" }
+    - { port: "5{{ ers_instance_number }}13" }
+    - { port: "5{{ ers_instance_number }}14" }
+    - { port: "5{{ ers_instance_number }}16" }
+  when: 1 == 2 #ToDo Fix this if we need to enable firewalld
+
+
+# End of Playbook.
+
+...

@@ -1,0 +1,174 @@
+- name: "RHEL: cluster setup"
+  when: ansible_os_family == "RedHat"
+  block:
+  - name:   "1.17 Generic Pacemaker - Ensure HA Cluster password is set to something secure"
+    ansible.builtin.user:
+      name:       hacluster
+      password:   "{{ password_ha_db_cluster | password_hash('sha512', 65534 | random(seed=inventory_hostname) | string) }}"
+
+  - name:   "1.17 Generic Pacemaker - Ensure the firewall service is configured to allow High Availability traffic"
+    ansible.builtin.firewalld:
+      service:    high-availability
+      state:      enabled
+      permanent:  true
+  
+  - name:   "1.17 Generic Pacemaker - Ensure the cluster can authenticate nodes as hacluster"
+    cluster_auth:
+      nodes:      "{{ primary_instance_name }} {{ secondary_instance_name }}"
+      username:   hacluster
+      password:   "{{ password_ha_db_cluster }}"
+  
+
+- name: "SUSE: cluster setup"
+  when: ansible_os_family == "Suse"
+  block:
+  - name:   "1.17 Generic Pacemaker - Ensure Process limit is raised"
+    ansible.builtin.lineinfile:
+      path:       /etc/systemd/system.conf
+      state:      present
+      regexp:     "^#?\\s*DefaultTasksMax="
+      line:       "DefaultTasksMax=4096"
+    register: raise_process_limit
+
+  - name:   "1.17 Generic Pacemaker - Ensure clustering can manage Virtual IPs on the Database Interface"
+    when:   ansible_facts.packages['cloud-netconfig-azure'] and (ansible_facts.packages['cloud-netconfig-azure'][0].version | float) < 1.3
+    ansible.builtin.lineinfile:
+      path:       /etc/sysconfig/network/ifcfg-eth0
+      state:      present
+      regexp:     "^#?\\s*CLOUD_NETCONFIG_MANAGE="
+      line:       "CLOUD_NETCONFIG_MANAGE='no'"
+
+
+- name: "Define the sid"
+  block:
+  - name:   "Set hana and db2 sid"
+    when:   node_tier == "db2" or node_tier == "hana"
+    ansible.builtin.set_fact:
+      current_sid: "{{ db_sid }}"
+
+  - name:   "Set scs sid"
+    when:   node_tier == "scs"
+    ansible.builtin.set_fact:
+      current_sid: "{{ sap_sid }}"
+
+
+- name: "Set up the cluster"
+  cluster_init:
+    state:      present
+    sid:        "{{ current_sid }}"
+    nodes:      "{{ primary_instance_name }} {{ secondary_instance_name }}"
+    tier:       "{{ node_tier }}"
+    token:      "{{ cluster_totem.token }}"
+
+
+- name: "SUSE: post setup"
+  when: ansible_os_family == "Suse"
+  block:
+  - name:   "1.17 Generic Pacemaker - Ensure HA Cluster password is set to something secure"
+    ansible.builtin.user:
+      name:       hacluster
+      password:   "{{ password_ha_db_cluster | password_hash('sha512', 65534 | random(seed=inventory_hostname) | string) }}"
+
+  - name:   "1.17 Generic Pacemaker - Ensure cluster configuration contains correct details"
+    ansible.builtin.template:
+      src:        corosync.conf.j2
+      dest:       /etc/corosync/corosync.conf
+      mode:       0600
+
+  - name:   "1.17 Generic Pacemaker - Ensure the corosync service is restarted on primary node."
+    when:   ansible_hostname == primary_instance_name
+    ansible.builtin.systemd:
+      name:       corosync
+      state:      restarted
+
+  - name:   "1.17 Generic Pacemaker - Pause"
+    when:   inventory_hostname == primary_instance_name
+    ansible.builtin.pause:
+      seconds: 15
+
+  - name:   "1.17 Generic Pacemaker - Ensure the corosync service is restarted on secondary node"
+    when:   ansible_hostname == secondary_instance_name
+    ansible.builtin.systemd:
+      name:       corosync
+      state:      restarted
+
+  - name:   "1.17 Generic Pacemaker - Pause"
+    when:   ansible_hostname == secondary_instance_name
+    ansible.builtin.pause:
+      seconds: 15
+
+
+- name: "BOTH: Configure properties"
+  cluster_property:
+    state:    present
+    name:     "{{ item.name }}"
+    value:    "{{ item.value }}"
+  loop:
+    - { name: 'stonith-enabled',    value: true }
+    - { name: 'concurrent-fencing', value: true }
+    - { name: 'stonith-timeout',    value: '900' }
+    - { name: 'stonith-action',     value: 'reboot' }
+
+
+- name: "RHEL: Ensure the expected quorum votes is set for the cluster"
+  when: anisble_os_family == "RedHat"
+  ansible.builtin.command: pcs quorum expected-votes "{{ cluster_quorum.expected_votes }}"
+  register: quorum
+  changed_when: quorum.rc == 0
+
+
+- name: "BOTH: Configure stonith device"
+  cluster_resource:
+    state:          present
+    name:           rsc_st_azure
+    resource_class: stonith
+    resource_type:  fence_azure_arm
+    options: |
+      subscriptionId="{{ sap_hana_fencing_spn_subscription_id }}"
+      resourceGroup="{{ resource_group_name }}"
+      tenantId="{{ sap_hana_fencing_spn_tenant_id }}"
+      login="{{ sap_hana_fencing_spn_client_id }}"
+      passwd="{{ sap_hana_fencing_spn_client_pwd }}"
+      pcmk_monitor_retries=4
+      pcmk_action_limit=3
+      power_timeout=240
+      pcmk_reboot_timeout=900
+      pcmk_host_map="{{ primary_instance_name }}:{{ hostvars[primary_instance_name]['primary_vm_name'] }};{{ secondary_instance_name }}:{{ hostvars[secondary_instance_name]['secondary_vm_name'] }}"
+      pcmk_host_list="{{ hostvars[primary_instance_name]['primary_vm_name'] }} {{ hostvars[secondary_instance_name]['secondary_vm_name'] }}"
+      op monitor interval=3600
+
+
+- name: "SUSE: Additional configuration"
+  when: ansible_os_family == "Suse"
+  block:
+  - name:   "Ensure Azure scheduled events is configured"
+    cluster_resource:
+      os:                 "{{ ansible_os_family }}"
+      state:              present
+      name:               rsc_azure-events
+      resource_class:     ocf
+      resource_provider:  heartbeat
+      resource_type:      azure-events
+      options: |
+        op monitor interval=10s
+
+  - name: "Ensure clone resource azure-events is configured"
+    cluster_clone:
+      state:              present
+      clone_name:         cln_azure-events
+      resource_name:      rsc_azure-events
+
+  - name: "Remove false positives"
+    ansible.builtin.command: crm_resource -C
+  
+  - name: "Disable maintenance mode"
+    cluster_property:
+      os:               "{{ ansible_os_family }}"
+      state:            present
+      name:             "maintenance-mode"
+      value:            "false"
+
+
+
+    
+
