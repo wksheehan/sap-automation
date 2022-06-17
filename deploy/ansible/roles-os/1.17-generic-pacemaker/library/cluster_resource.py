@@ -70,7 +70,7 @@ EXAMPLES = r'''
     state: present
     name: my_stonith_resource
     resource-type: stonith
-    options: login="username" password="testpass" op monitor interval=3600s
+    options: op monitor interval=3600s
 '''
 
 from ansible.module_utils.basic import AnsibleModule
