@@ -51,6 +51,7 @@
         - { parameter: 'sap_fqdn', error: 'Please provide the SAP fqdn in  in sap_fqdn parameter' }
         - { parameter: 'sap_sid', error: 'Please provide the SAP SID in sap_sid parameter' }
         - { parameter: 'secret_prefix', error: 'Please provide the Key Vault secret prefix in secret_prefix parameter' }
+        - { parameter: 'sapbits_location_base_path', error: 'Please provide the sapbits_location_base_path in the deployer key vault' }
       loop_control:
         loop_var: item_to_check
 
@@ -91,6 +92,14 @@
         - db_high_availability
         - platform == "HANA"
 
+    - name:                            "sharedHome variables"
+      ansible.builtin.debug:
+        var:                           sid_to_be_deployed
+      when:                            MULTI_SIDS is defined
+      loop:                            "{{ MULTI_SIDS }}"
+      loop_control:
+        loop_var:                      sid_to_be_deployed
+
     - name:                            "0.0 Validations - Validate ORACLE parameters"
       ansible.builtin.assert:
         that:
@@ -122,19 +131,35 @@
 # |                                                                            |
 # +------------------------------------4--------------------------------------*/
 
-- hosts:              "{{ sap_sid|upper }}_DB  :
-                       {{ sap_sid|upper }}_SCS :
-                       {{ sap_sid|upper }}_ERS :
-                       {{ sap_sid|upper }}_PAS :
-                       {{ sap_sid|upper }}_ERS :
-                       {{ sap_sid|upper }}_APP :
-                       {{ sap_sid|upper }}_WEB"
+- hosts:              "{{ sap_sid | upper }}_DB  :
+                       {{ sap_sid | upper }}_SCS :
+                       {{ sap_sid | upper }}_ERS :
+                       {{ sap_sid | upper }}_PAS :
+                       {{ sap_sid | upper }}_ERS :
+                       {{ sap_sid | upper }}_APP :
+                       {{ sap_sid | upper }}_WEB"
 
   name:                                "0.0 Validations - Validate SAP-Parameters"
   gather_facts:                        true
   vars_files:
     - vars/ansible-input-api.yaml                               # API Input template with defaults
   tasks:
+
+    - name:                            "0.0 Validations - Variables"
+      ansible.builtin.debug:
+        var:                           hostvars
+        verbosity:                     4
+
+    - name:                            "0.0 Validations - groupsnames"
+      ansible.builtin.debug:
+        var:                           group_names
+        verbosity:                     4
+
+    - name:                            "0.0 Validations - Variables"
+      ansible.builtin.debug:
+        msg:
+          - "Virtual Host Name: {{ virtual_host }}"
+          - "DNS:               {{ ansible_domain }}"
 
     - name:                            "0.0 Validations - Validate SCS and HDB instance numbers"
       ansible.builtin.assert:
@@ -164,23 +189,36 @@
         fail_msg:                      "Please ensure that the pas_instance_number is different from the scs_instance_number on standalone installation"
       when:                            (ansible_play_hosts_all | length) == 1
 
+    - name:                            Check internet connectivity
+      ansible.builtin.uri:
+        url:                           "{{ url_internet }}"
+        validate_certs:                false
+      when:                            check_outbound
+
     - name:                            "0.0 Validations - Show Mounts"
       ansible.builtin.command:         df -h
       register:                        mounts
+      failed_when:                     false
+      tags:
+        - 0.0-mounts
 
     - name:                            "0.0 Validations - Show Mounts"
       ansible.builtin.debug:
         var:                           mounts.stdout_lines
+      when:                            mounts is defined
 
     - name:                            "0.0 Validations - Show Hosts"
       ansible.builtin.command:         cat /etc/hosts
       register:                        hosts
+      tags:
+        - 0.0-hosts
 
     - name:                            "0.0 Validations - Show Hosts"
       ansible.builtin.debug:
         var:                           hosts.stdout_lines
+      when:                            hosts is defined
 
-- hosts:               "{{ sap_sid|upper }}_DB"
+- hosts:               "{{ sap_sid | upper }}_DB"
 
   name:                                "0.0 Validations - Validate SAP-Parameters for Oracle"
   gather_facts:                        true
@@ -196,7 +234,7 @@
         fail_msg:                      "Please specify MULTI_SIDS if you are deploying a shared home installation"
       when:                            node_tier == 'oracle-multi-sid'
 
-- hosts:               "{{ sap_sid|upper }}_WEB"
+- hosts:               "{{ sap_sid | upper }}_WEB"
 
   name:                                "0.0 Validations - Validate SAP-Parameters for Web Dispatchers"
   gather_facts:                        true

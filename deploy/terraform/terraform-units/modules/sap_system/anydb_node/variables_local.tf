@@ -1,135 +1,5 @@
-variable "anchor_vm" {
-  description = "Deployed anchor VM"
-}
-
-variable "resource_group" {
-  description = "Details of the resource group"
-}
-
-variable "storage_bootdiag_endpoint" {
-  description = "Details of the boot diagnostics storage account"
-}
-
-variable "ppg" {
-  description = "Details of the proximity placement group"
-}
-
-variable "naming" {
-  description = "Defines the names for the resources"
-}
-
-variable "custom_disk_sizes_filename" {
-  type        = string
-  description = "Disk size json file"
-  default     = ""
-}
-
-variable "admin_subnet" {
-  description = "Information about SAP admin subnet"
-}
-
-variable "db_subnet" {
-  description = "Information about SAP db subnet"
-}
-variable "sid_keyvault_user_id" {
-  description = "ID of the user keyvault for sap_system"
-}
-
-variable "sdu_public_key" {
-  description = "Public key used for authentication"
-}
-
-variable "sid_password" {
-  description = "SDU password"
-}
-
-variable "sid_username" {
-  description = "SDU username"
-}
-
-variable "sap_sid" {
-  description = "The SID of the application"
-}
-
-variable "db_asg_id" {
-  description = "Database Application Security Group"
-}
-
-variable "deployment" {
-  description = "The type of deployment"
-}
-
-variable "terraform_template_version" {
-  description = "The version of Terraform templates that were identified in the state file"
-}
-
-variable "cloudinit_growpart_config" {
-  description = "A cloud-init config that configures automatic growpart expansion of root partition"
-}
-
-variable "license_type" {
-  description = "Specifies the license type for the OS"
-  default     = ""
-
-}
-
-variable "use_loadbalancers_for_standalone_deployments" {
-  description = "Defines if load balancers are used even for standalone deployments"
-  default     = true
-}
-
-variable "database_vm_names" {
-  default = [""]
-}
-
-variable "database_vm_db_nic_ips" {
-  default = [""]
-}
-
-variable "database_vm_admin_nic_ips" {
-  default = [""]
-}
-
-variable "database_vm_storage_nic_ips" {
-  default = [""]
-}
-
-variable "database_server_count" {
-  default = 1
-}
-
-variable "order_deployment" {
-  description = "psuedo condition for ordering deployment"
-  default     = ""
-}
-
-variable "use_observer" {
-}
-
-variable "landscape_tfstate" {
-  description = "Landscape remote tfstate file"
-}
 
 locals {
-  // Imports database sizing information
-
-  default_filepath = format("%s%s",
-    path.module,
-    "/../../../../../configs/anydb_sizes.json"
-  )
-  custom_sizing = length(var.custom_disk_sizes_filename) > 0
-
-  // Imports database sizing information
-  file_name = local.custom_sizing ? (
-    fileexists(var.custom_disk_sizes_filename) ? (
-      var.custom_disk_sizes_filename) : (
-      format("%s/%s", path.cwd, var.custom_disk_sizes_filename)
-    )) : (
-    local.default_filepath
-
-  )
-
-  sizes = jsondecode(file(local.file_name))
 
   faults = jsondecode(file(format("%s%s",
     path.module,
@@ -144,10 +14,10 @@ locals {
     try(local.anydb.instance.sid, lower(substr(local.anydb_platform, 0, 3)))) : (
     lower(substr(local.anydb_platform, 0, 3))
   )
-  sid       = length(var.sap_sid) > 0 ? var.sap_sid : local.anydb_sid
-  prefix    = trimspace(var.naming.prefix.SDU)
-  rg_exists = length(try(var.infrastructure.resource_group.arm_id, "")) > 0
-  rg_name = local.rg_exists ? (
+  sid                   = length(var.sap_sid) > 0 ? var.sap_sid : local.anydb_sid
+  prefix                = trimspace(var.naming.prefix.SDU)
+  resource_group_exists = length(try(var.infrastructure.resource_group.arm_id, "")) > 0
+  rg_name = local.resource_group_exists ? (
     try(split("/", var.infrastructure.resource_group.arm_id)[4], "")) : (
     coalesce(
       try(var.infrastructure.resource_group.name, ""),
@@ -175,7 +45,6 @@ locals {
       upper(pair.Location) == upper(var.infrastructure.region) ? pair.MaximumFaultDomainCount : ""
   ])[0]), 2)
 
-
   // Dual network cards
   anydb_dual_nics = try(local.anydb.dual_nics, false)
 
@@ -192,21 +61,41 @@ locals {
   anydb_platform = local.enable_deployment ? upper(try(local.anydb.platform, "NONE")) : "NONE"
   // Enable deployment based on length of local.anydb_databases
 
+  // Imports database sizing information
+
+  default_filepath = format("%s%s",
+    path.module,
+    format("/../../../../../configs/%s_sizes.json", lower(local.anydb_platform))
+  )
+  custom_sizing = length(var.custom_disk_sizes_filename) > 0
+
+  // Imports database sizing information
+  file_name = local.custom_sizing ? (
+    fileexists(var.custom_disk_sizes_filename) ? (
+      var.custom_disk_sizes_filename) : (
+      format("%s/%s", path.cwd, var.custom_disk_sizes_filename)
+    )) : (
+    local.default_filepath
+
+  )
+
+  sizes = jsondecode(file(local.file_name))
+
+
   // If custom image is used, we do not overwrite os reference with default value
   anydb_custom_image = try(local.anydb.os.source_image_id, "") != "" ? true : false
 
   anydb_ostype = upper(local.anydb_platform) == "SQLSERVER" ? "WINDOWS" : try(local.anydb.os.os_type, "LINUX")
   anydb_oscode = upper(local.anydb_ostype) == "LINUX" ? "l" : "w"
-  anydb_size   = try(local.anydb.size, "Default")
+  anydb_size   = try(local.anydb.db_sizing_key, "Default")
 
   db_sizing = local.enable_deployment ? lookup(local.sizes.db, local.anydb_size).storage : []
   db_size   = local.enable_deployment ? lookup(local.sizes.db, local.anydb_size).compute : {}
 
   anydb_sku = try(local.db_size.vm_size, "Standard_E16_v3")
 
-  anydb_ha     = try(local.anydb.high_availability, false)
-  db_sid       = try(local.anydb.instance.sid, lower(substr(local.anydb_platform, 0, 3)))
-  loadbalancer = try(local.anydb.loadbalancer, {})
+  anydb_ha = try(local.anydb.high_availability, false)
+  db_sid   = try(local.anydb.instance.sid, lower(substr(local.anydb_platform, 0, 3)))
 
   # Oracle deployments do not need a load balancer
   enable_db_lb_deployment = (
@@ -241,13 +130,13 @@ locals {
     }
     DB2 = {
       "publisher" = "SUSE",
-      "offer"     = "sles-sap-12-sp5",
+      "offer"     = "sles-sap-15-sp3",
       "sku"       = "gen2"
       "version"   = "latest"
     }
     ASE = {
       "publisher" = "SUSE",
-      "offer"     = "sles-sap-12-sp5",
+      "offer"     = "sles-sap-15-sp3",
       "sku"       = "gen2"
       "version"   = "latest"
     }
@@ -486,5 +375,32 @@ locals {
 
   dns_label               = try(var.landscape_tfstate.dns_label, "")
   dns_resource_group_name = try(var.landscape_tfstate.dns_resource_group_name, "")
+
+  database_primary_ips = [
+    {
+      name                          = "IPConfig1"
+      subnet_id                     = var.db_subnet.id
+      nic_ips                       = var.database_vm_db_nic_ips
+      private_ip_address_allocation = var.databases[0].use_DHCP ? "Dynamic" : "Static"
+      offset                        = 0
+      primary                       = true
+    }
+  ]
+
+  database_secondary_ips = [
+    {
+      name                          = "IPConfig2"
+      subnet_id                     = var.db_subnet.id
+      nic_ips                       = var.database_vm_db_nic_secondary_ips
+      private_ip_address_allocation = var.databases[0].use_DHCP ? "Dynamic" : "Static"
+      offset                        = var.database_server_count
+      primary                       = false
+    }
+  ]
+
+  database_ips = (var.use_secondary_ips) ? (
+    flatten(concat(local.database_primary_ips, local.database_secondary_ips))) : (
+    local.database_primary_ips
+  )
 
 }

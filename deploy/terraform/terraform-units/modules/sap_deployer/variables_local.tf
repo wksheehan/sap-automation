@@ -1,47 +1,11 @@
-/*
-Description:
 
-  Define local variables.
-*/
-variable "naming" {
-  description = "naming convention"
-}
+###############################################################################
+#                                                                             # 
+#                            Local Variables                                  # 
+#                                                                             # 
+###############################################################################
 
-variable "firewall_deployment" {
-  description = "Boolean flag indicating if an Azure Firewall should be deployed"
-}
 
-variable "assign_subscription_permissions" {
-  description = "Assign permissions on the subscription"
-}
-
-variable "enable_purge_control_for_keyvaults" {
-  description = "Allow the deployment to control the purge protection"
-}
-
-variable "bootstrap" {}
-
-variable "use_private_endpoint" {
-  default = false
-}
-
-variable "use_webapp" {
-  default = false
-}
-
-variable "configure" {
-  default = false
-}
-
-variable "tf_version" {
-  default = ""
-}
-
-variable "bastion_deployment" {
-  default = false
-}
-
-// Set defaults
 locals {
 
   storageaccount_names = var.naming.storageaccount_names.DEPLOYER
@@ -56,9 +20,9 @@ locals {
   // Resource group
   prefix = var.naming.prefix.DEPLOYER
 
-  rg_exists = length(var.infrastructure.resource_group.arm_id) > 0
+  resource_group_exists = length(var.infrastructure.resource_group.arm_id) > 0
   // If resource ID is specified extract the resourcegroup name from it otherwise read it either from input of create using the naming convention
-  rg_name = local.rg_exists ? (
+  rg_name = local.resource_group_exists ? (
     split("/", var.infrastructure.resource_group.arm_id)[4]) : (
     length(var.infrastructure.resource_group.name) > 0 ? (
       var.infrastructure.resource_group.name) : (
@@ -69,7 +33,7 @@ locals {
       )
     )
   )
-  rg_appservice_location = local.rg_exists ? data.azurerm_resource_group.deployer[0].location : azurerm_resource_group.deployer[0].location
+  rg_appservice_location = local.resource_group_exists ? data.azurerm_resource_group.deployer[0].location : azurerm_resource_group.deployer[0].location
   
   // Post fix for all deployed resources
   postfix = random_id.deployer.hex
@@ -166,8 +130,8 @@ locals {
   firewall_service_tags = format("AzureCloud.%s", var.infrastructure.region)
 
   // Bastion subnet
-  bastion_subnet_arm_id = try(var.infrastructure.vnets.management.subnet_bastion.arm_id, "")
-  bastion_subnet_exists = length(local.bastion_subnet_arm_id) > 0
+  management_bastion_subnet_arm_id = try(var.infrastructure.vnets.management.subnet_bastion.arm_id, "")
+  bastion_subnet_exists = length(local.management_bastion_subnet_arm_id) > 0
   bastion_subnet_name   = "AzureBastionSubnet"
   bastion_subnet_prefix = local.bastion_subnet_exists ? (
     "") : (
@@ -239,7 +203,7 @@ locals {
           local.prefix) : (
           var.infrastructure.environment
       )),
-      "/[^A-Za-z0-9]/"
+      "/[^A-Za-z0-9-]/"
     , "")
   )
   pk_secret_name = local.key_exist ? (
@@ -251,7 +215,7 @@ locals {
           var.infrastructure.environment
         ),
       ),
-      "/[^A-Za-z0-9]/",
+      "/[^A-Za-z0-9-]/",
       ""
     )
   )
@@ -264,7 +228,7 @@ locals {
           var.infrastructure.environment
         ),
       ),
-      "/[^A-Za-z0-9]/"
+      "/[^A-Za-z0-9-]/"
     , "")
   )
   username_secret_name = local.username_exist ? (
@@ -276,7 +240,7 @@ locals {
           var.infrastructure.environment
         ),
       ),
-      "/[^A-Za-z0-9]/"
+      "/[^A-Za-z0-9-]/"
     , "")
   )
 
