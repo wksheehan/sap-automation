@@ -1,0 +1,10 @@
+# Example task to be used when including this role
+- name: Modify a table storage workload zone or system
+  modify_table:
+    conn_str: "{{ connStr }}"
+    table_name: "{{ collection }}"
+    partition_key: "{{ partitionKey }}"
+    id: "{{ id }}"
+    crud: "{{ crud }}"
+    entity: "{{ entity }}"
+    sap_obj: "{{ sapObj }}"
