@@ -48,6 +48,9 @@ namespace AutomationForm.Models
         public bool? pas_installation { get; set; }
         public bool? application_server_installation { get; set; }
         public bool? webdispatcher_installation { get; set; }
+        public bool? acss_registration { get; set; }
+        public string acss_environment { get; set; }
+        public string acss_sap_product { get; set; }
     }
 
 }
